@@ -100,3 +100,63 @@ export function workCompleted(state, now) {
   const starts = phaseStartsMs(state.timeline);
   return state.timeline.filter((p, i) => p.kind === 'work' && starts[i] + p.duration * MS <= ms).length;
 }
+
+// ---- Cues -----------------------------------------------------------------
+
+export const MAX_CUE_GAP_MS = 2000;
+
+// Remaining-time marks (seconds) called out in an amrap phase:
+// every 5 minutes below the cap, then 1 minute and 30 seconds.
+function timeLeftMarks(durationSec) {
+  const marks = [];
+  for (let sec = Math.floor((durationSec - 1) / 300) * 300; sec >= 300; sec -= 300) marks.push(sec);
+  marks.push(60, 30);
+  return marks.filter((sec) => sec < durationSec);
+}
+
+function timeLeftText(sec) {
+  if (sec === 60) return '1 minute left';
+  return sec > 60 ? `${sec / 60} minutes left` : `${sec} seconds left`;
+}
+
+export function cueSchedule(timeline) {
+  const starts = phaseStartsMs(timeline);
+  const rounds = Math.max(...timeline.map((p) => p.round));
+  const cues = [];
+  timeline.forEach((phase, i) => {
+    const start = starts[i];
+    const end = start + phase.duration * MS;
+    const { name } = phase.exercise;
+    if (phase.kind === 'work') {
+      cues.push({ atMs: start, type: 'go' });
+      const previous = timeline[i - 1];
+      if (!previous || previous.kind === 'work') cues.push({ atMs: start, type: 'announceExercise', text: name });
+      if (phase.exercise.sided) cues.push({ atMs: start + (phase.duration * MS) / 2, type: 'switchSides', text: 'Switch sides' });
+    } else if (phase.kind === 'amrap') {
+      cues.push({ atMs: start, type: 'go' });
+      for (const sec of timeLeftMarks(phase.duration)) {
+        cues.push({ atMs: end - sec * MS, type: 'timeLeft', text: timeLeftText(sec) });
+      }
+    } else if (phase.kind === 'roundBreak') {
+      cues.push({ atMs: start, type: 'announceNext', text: `Round ${phase.round} of ${rounds}. Rest. Next: ${name}` });
+    } else {
+      const next = timeline[i + 1];
+      const text = next?.kind === 'amrap'
+        ? `Get ready. ${next.duration / 60} minutes, as many rounds as you can.`
+        : `Next: ${name}`;
+      cues.push({ atMs: start, type: 'announceNext', text });
+    }
+    for (const count of [3, 2, 1]) {
+      const atMs = end - count * MS;
+      if (atMs >= start) cues.push({ atMs, type: 'countdown', count });
+    }
+  });
+  cues.push({ atMs: totalMs(timeline), type: 'finished', text: 'Workout complete' });
+  return cues.sort((a, b) => a.atMs - b.atMs);
+}
+
+// Cues due in (prevMs, currentMs]. Large jumps (backgrounded tab) play nothing.
+export function cuesBetween(timeline, prevMs, currentMs) {
+  if (currentMs <= prevMs || currentMs - prevMs > MAX_CUE_GAP_MS) return [];
+  return cueSchedule(timeline).filter((cue) => cue.atMs > prevMs && cue.atMs <= currentMs);
+}
