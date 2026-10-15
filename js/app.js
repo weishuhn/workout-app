@@ -5,6 +5,7 @@ import { SETTING_CHOICES, perRoundOptions, applySetting } from './settings.js';
 import { generateCircuit, buildTimeline, totalDuration } from './generator.js';
 import { formatDuration, formatTarget, ringNotice } from './display.js';
 import { loadSettings, saveSettings, loadLog } from './storage.js';
+import { photoFrames } from './photos.js';
 import { renderHistory, renderDone } from './history.js';
 import { createAudio } from './audio.js';
 import { runWorkout } from './workout.js';
@@ -39,6 +40,15 @@ function circuitItem(exercise, showTarget) {
   const name = document.createElement('span');
   name.textContent = exercise.name;
   item.append(tag, name);
+  const [photo] = photoFrames(exercise.id);
+  if (photo) {
+    const thumb = document.createElement('img');
+    thumb.className = 'thumb';
+    thumb.src = photo;
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+    item.prepend(thumb);
+  }
   if (showTarget) {
     const target = document.createElement('span');
     target.className = 'target';
