@@ -15,6 +15,13 @@ Beeps and voice cues mean you never need to touch the phone once you press Start
 Open the site, pick Timed or Reps, check the settings and the generated circuit (Shuffle for a
 new one), set your rings to the height shown, and press Start. Add it to your phone's home screen for offline use.
 
+## Known device behaviour
+
+- Keep the app in the foreground: phones pause web timers and audio in the background.
+- On iPhone the ring/silent switch can mute the beeps (the voice may still play).
+- Allow the screen to stay on; low-power mode can block it, and a tip appears when the app can't keep it on.
+- Start always begins with sound on, even if you muted the previous workout.
+
 ## Develop
 
 No build step and no dependencies.
