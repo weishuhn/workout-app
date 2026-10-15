@@ -64,7 +64,7 @@ h1, h2 { margin: 0; }
 .panel-head h2 { margin-bottom: 0; }
 
 /* ---- Setup ---- */
-.settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field label { font-size: 0.85rem; color: var(--muted); }
 .field select {
@@ -196,6 +196,7 @@ h1, h2 { margin: 0; }
   color: var(--phase-fg);
   font-weight: 700;
   flex: none;
+  touch-action: manipulation;
 }
 .wo-main {
   flex: 1;
@@ -210,12 +211,12 @@ h1, h2 { margin: 0; }
   margin: 0 auto;
 }
 .wo-label { margin: 0; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
-.wo-name { font-size: clamp(2rem, min(12vw, 8vh), 6rem); line-height: 1.02; font-weight: 850; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.wo-name { font-size: clamp(2rem, min(14vw, 8vh), 6.5rem); line-height: 1.02; font-weight: 850; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .wo-cue { margin: 8px 0 0; font-size: clamp(1rem, 3.5vw, 1.4rem); opacity: 0.85; }
-.wo-time { font-size: clamp(5rem, min(42vw, 30vh), 18rem); font-weight: 850; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.wo-time { font-size: clamp(5rem, min(42vw, 27vh), 18rem); font-weight: 850; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .wo-bar { width: 100%; height: 8px; margin: 8px 0 12px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--phase-fg) 22%, transparent); }
 .wo-bar span { display: block; height: 100%; background: var(--phase-fg); transform-origin: left; transform: scaleX(0); }
-.wo-next { margin: 0; font-size: clamp(1.1rem, 4.5vw, 1.8rem); font-weight: 750; }
+.wo-next { margin: 0; font-size: clamp(1.25rem, 5.5vw, 2rem); font-weight: 750; }
 .workout.paused .wo-time { opacity: 0.45; }
 .wo-list { display: none; }
 .workout[data-mode="reps"] .wo-name,
@@ -276,6 +277,7 @@ h1, h2 { margin: 0; }
   color: var(--phase-fg);
   font-size: 1.05rem;
   font-weight: 800;
+  touch-action: manipulation;
 }
 .wo-btn-primary { background: var(--phase-fg); border-color: var(--phase-fg); color: var(--phase-bg); font-size: 1.3rem; }
 .hold {

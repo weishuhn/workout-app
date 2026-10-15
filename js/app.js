@@ -13,7 +13,7 @@ const $ = (id) => document.getElementById(id);
 
 const CIRCUIT_KEYS = new Set(['exercisesPerRound', 'bar', 'chair', 'rings', 'cardio']);
 const NUMERIC_KEYS = new Set(['workSec', 'changeoverSec', 'exercisesPerRound', 'rounds', 'roundBreakSec', 'capMin']);
-const RING_LABELS = { off: 'Off', low: 'Low (knee)', waist: 'Waist height' };
+const RING_LABELS = { off: 'Off', low: 'Low', waist: 'Waist height' };
 const seconds = (value) => `${value}s`;
 const minutes = (value) => `${value} min`;
 
