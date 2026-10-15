@@ -64,7 +64,7 @@
       <button id="wo-mute" class="wo-chip" type="button" aria-pressed="false">Sound on</button>
     </div>
     <div class="wo-main">
-      <div id="wo-photo" class="wo-photo" hidden><img id="wo-photo-img" alt=""></div>
+      <button id="wo-photo" class="wo-photo" type="button" hidden><img id="wo-photo-img" alt=""></button>
       <p id="wo-label" class="wo-label"></p>
       <h2 id="wo-name" class="wo-name"></h2>
       <p id="wo-cue" class="wo-cue"></p>
@@ -109,5 +109,14 @@
     </div>
     <ul id="history-list" class="history"></ul>
   </section>
+
+  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="viewer-name">
+    <button id="viewer-close" class="viewer-close" type="button" aria-label="Close picture">✕</button>
+    <div class="viewer-head">
+      <h2 id="viewer-name" class="viewer-name"></h2>
+      <p id="viewer-cue" class="viewer-cue"></p>
+    </div>
+    <div id="viewer-frames" class="viewer-frames"></div>
+  </div>
 </body>
 </html>

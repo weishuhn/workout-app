@@ -54,7 +54,7 @@ h1, h2 { margin: 0; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-small { min-height: 44px; padding: 0 16px; font-size: 0.95rem; }
 .btn-link { min-height: 44px; padding: 0 8px; background: none; border: none; color: var(--muted); font-weight: 650; }
-.btn:focus-visible, .btn-link:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
+.btn:focus-visible, .btn-link:focus-visible, .thumb-btn:focus-visible, .wo-photo:focus-visible, .viewer-close:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
   outline: 3px solid var(--prep);
   outline-offset: 2px;
 }
@@ -106,7 +106,8 @@ h1, h2 { margin: 0; }
   background: var(--surface-2);
 }
 .circuit li::before { content: counter(step); min-width: 1.4em; color: var(--muted); font-variant-numeric: tabular-nums; }
-.thumb { flex: none; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #fff; }
+.thumb-btn { flex: none; display: block; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: none; cursor: zoom-in; touch-action: manipulation; }
+.thumb { display: block; flex: none; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #fff; }
 .tag {
   flex: none;
   min-width: 4.6em;
@@ -212,7 +213,7 @@ h1, h2 { margin: 0; }
   margin: 0 auto;
 }
 /* Picture of the upcoming exercise (timed, non-work phases): takes only the height the text leaves free. */
-.wo-photo { flex: 1 1 0; min-height: 0; max-height: 34vh; display: flex; justify-content: center; margin: 8px 0; }
+.wo-photo { flex: 1 1 0; min-height: 0; max-height: 34vh; display: flex; justify-content: center; margin: 8px 0; padding: 0; border: 0; background: none; cursor: zoom-in; touch-action: manipulation; }
 .wo-photo[hidden] { display: none; }
 .wo-photo img { height: 100%; width: auto; max-width: 100%; object-fit: contain; border-radius: 12px; background: #fff; }
 /* On short screens the picture gets its room by shrinking the countdown and name and dropping the cue. */
@@ -354,6 +355,44 @@ h1, h2 { margin: 0; }
   text-transform: uppercase;
 }
 .empty { padding: 24px; text-align: center; color: var(--muted); }
+
+/* ---- Picture viewer ---- */
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgb(8 9 10 / 0.97);
+  color: var(--text);
+  cursor: zoom-out;
+}
+.viewer-close {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  font-size: 1.3rem;
+  line-height: 1;
+  touch-action: manipulation;
+}
+.viewer-head { flex: none; padding-right: 56px; min-height: 48px; }
+.viewer-name { font-size: 1.4rem; line-height: 1.15; letter-spacing: -0.01em; }
+.viewer-cue { margin: 4px 0 0; color: var(--muted); font-size: 0.95rem; line-height: 1.3; }
+.viewer-frames { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.viewer-frame { flex: 1 1 0; min-height: 0; min-width: 0; margin: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.viewer-frame figcaption { flex: none; text-align: center; font-size: 0.8rem; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.viewer-frame img { flex: 1 1 0; min-height: 0; width: 100%; object-fit: contain; border-radius: 12px; background: #fff; }
+/* Wider than tall: the two frames sit side by side. */
+@media (orientation: landscape) {
+  .viewer-frames { flex-direction: row; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .workout, .hold::before, .hold.holding::before { transition: none; }
