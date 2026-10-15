@@ -21,6 +21,12 @@ test('service worker caches every script, stylesheet and icon', () => {
   }
 });
 
+test('service worker caches every exercise picture', () => {
+  const files = readdirSync(new URL('img/exercises/', root)).filter((name) => !name.startsWith('.') && !name.endsWith('.md'));
+  assert.ok(files.length > 0);
+  for (const file of files) assert.ok(assets.includes(`img/exercises/${file}`), `img/exercises/${file} missing from sw.js ASSETS`);
+});
+
 test('every cached asset exists', () => {
   for (const path of assets.filter((p) => p !== './')) assert.ok(existsSync(new URL(path, root)), path);
 });
