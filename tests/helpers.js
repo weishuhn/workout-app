@@ -16,3 +16,21 @@ export function seededRng(seed) {
 export function ex(id, group, equipment = 'none', extra = {}) {
   return { id, name: id, group, equipment, sided: false, cue: `${id} cue`, reps: 10, ...extra };
 }
+
+// In-memory stand-in for localStorage.
+export function memoryStorage(initial = {}) {
+  const data = new Map(Object.entries(initial));
+  return {
+    data,
+    getItem: (key) => (data.has(key) ? data.get(key) : null),
+    setItem: (key, value) => data.set(key, String(value)),
+  };
+}
+
+// localStorage that throws on every access (private mode, blocked storage, quota exceeded).
+export function throwingStorage() {
+  return {
+    getItem() { throw new Error('storage denied'); },
+    setItem() { throw new Error('quota exceeded'); },
+  };
+}
