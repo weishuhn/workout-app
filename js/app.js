@@ -111,6 +111,9 @@ $('done-history').addEventListener('click', openHistory);
 const audio = createAudio({ isMuted: () => app.settings.muted });
 
 $('start').addEventListener('click', () => {
+  // Mute is per workout: every workout starts with sound on.
+  app.settings = applySetting(app.settings, 'muted', false);
+  saveSettings(app.settings);
   audio.unlock();
   showScreen('workout');
   runWorkout({
