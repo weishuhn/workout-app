@@ -251,11 +251,12 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     tick();
   }
 
-  // Taps and returning to the page re-arm audio that iOS may have interrupted.
   // The timer keeps running under the viewer; it closes itself when the phase changes.
   on($('wo-photo'), 'click', () => {
     if (shownExercise) openViewer(shownExercise);
   });
+
+  // Taps and returning to the page re-arm audio that iOS may have interrupted.
   on($('wo-pause'), 'click', () => {
     audio.unlock();
     const now = performance.now();
