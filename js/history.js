@@ -17,13 +17,14 @@ function element(tag, className, text) {
 }
 
 const count = (value) => (Number.isFinite(value) ? value : 0);
+const plural = (value, word) => `${value} ${word}${value === 1 ? '' : 's'}`;
 
 function historyDetail(entry) {
   if (entry.mode === 'reps') {
     const exercises = Array.isArray(entry.circuit) ? entry.circuit.length : 0;
-    return `${formatDuration(entry.activeSec)} · Reps · ${exercises} exercises`;
+    return `${formatDuration(entry.activeSec)} · Reps · ${plural(exercises, 'exercise')}`;
   }
-  return `${formatDuration(entry.activeSec)} · ${count(entry.exercisesCompleted)} exercises · ${count(entry.roundsCompleted)} rounds`;
+  return `${formatDuration(entry.activeSec)} · ${plural(count(entry.exercisesCompleted), 'exercise')} · ${plural(count(entry.roundsCompleted), 'round')}`;
 }
 
 function historyItem(entry) {
@@ -55,6 +56,12 @@ export function renderDone(entry) {
   $('done-title').textContent = entry.partial ? 'Workout ended' : 'Workout complete';
   $('done-time').textContent = formatDuration(entry.activeSec);
   $('done-rounds-stat').hidden = reps;
-  $('done-rounds').textContent = String(entry.roundsCompleted ?? 0);
-  $('done-exercises').textContent = String(reps ? entry.circuit.length : entry.exercisesCompleted);
+  setStat('done-rounds', entry.roundsCompleted ?? 0, 'Round');
+  setStat('done-exercises', reps ? entry.circuit.length : entry.exercisesCompleted, 'Exercise');
+}
+
+// Writes a Done stat and its label, singular for 1.
+function setStat(id, value, label) {
+  $(id).textContent = String(value);
+  $(id).nextElementSibling.textContent = value === 1 ? label : `${label}s`;
 }
