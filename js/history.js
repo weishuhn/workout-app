@@ -37,15 +37,17 @@ function historyItem(entry, onDelete) {
     element('span', 'history-detail', detail),
   );
   if (entry.partial) item.append(element('span', 'badge', 'Partial'));
+  // Entries without an id can't be told apart, so only "Clear history" removes them.
+  if (entry.id == null) return item;
   const remove = element('button', 'history-delete', '✕');
   remove.type = 'button';
   remove.setAttribute('aria-label', `Delete workout from ${formatEntryDate(entry)}`);
-  remove.addEventListener('click', () => onDelete(entry));
+  remove.addEventListener('click', () => onDelete(entry, remove));
   item.append(remove);
   return item;
 }
 
-// onDelete(entry) is called when a row's delete button is tapped; confirming and storage live with the caller.
+// onDelete(entry, button) is called when a row's delete button is tapped; confirming and storage live with the caller.
 export function renderHistory(log, now = new Date(), onDelete = () => {}) {
   $('stat-week').textContent = String(workoutsThisWeek(log, now));
   const streak = currentStreak(log, now);

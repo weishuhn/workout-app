@@ -80,6 +80,32 @@ test('deleteLogEntry does not remove other entries that share fields', () => {
   assert.deepEqual(deleteLogEntry('1', storage), [twin]);
 });
 
+test('deleteLogEntry with a nullish or non-id argument changes and writes nothing', () => {
+  const log = [day(1), { startedAt: '2026-10-12T10:00:00.000Z' }];
+  for (const id of [undefined, null, {}, [], true]) {
+    const storage = memoryStorage({ [LOG_KEY]: JSON.stringify(log) });
+    const writes = [];
+    const spy = { getItem: storage.getItem, setItem: (...args) => { writes.push(args); storage.setItem(...args); } };
+    assert.deepEqual(deleteLogEntry(id, spy), log);
+    assert.equal(writes.length, 0);
+  }
+});
+
+test('deleteLogEntry removes only one of several entries sharing an id', () => {
+  const log = [day(1), { ...day(2), id: '1' }, day(3)];
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify(log) });
+  assert.deepEqual(deleteLogEntry('1', storage), [log[1], log[2]]);
+  assert.deepEqual(loadLog(storage), [log[1], log[2]]);
+});
+
+test('entries lacking an id are untouched by any single delete', () => {
+  const idless = [{ startedAt: '2026-10-11T10:00:00.000Z' }, { startedAt: '2026-10-12T10:00:00.000Z' }];
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify([...idless, day(3)]) });
+  for (const id of ['undefined', 'null', '', undefined, null]) deleteLogEntry(id, storage);
+  assert.deepEqual(loadLog(storage), [...idless, day(3)]);
+  assert.deepEqual(deleteLogEntry('3', storage), idless);
+});
+
 test('deleteLogEntry compares ids as strings', () => {
   const storage = memoryStorage({ [LOG_KEY]: JSON.stringify([day(1), day(2)]) });
   assert.deepEqual(deleteLogEntry(1, storage), [day(2)]);

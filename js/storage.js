@@ -57,11 +57,16 @@ export function appendLog(entry, storage = browserStorage()) {
   return log;
 }
 
-// Removes only the entry with this id; an unknown id leaves the log as it was.
+const isEntryId = (id) => typeof id === 'string' || typeof id === 'number';
+
+// Removes the first entry with this id (duplicates go one at a time). A missing, non-id or unknown id
+// leaves the log as it was, and entries without an id are never matched.
 export function deleteLogEntry(id, storage = browserStorage()) {
   const log = loadLog(storage);
-  const remaining = log.filter((entry) => String(entry.id) !== String(id));
-  if (remaining.length !== log.length) writeJson(storage, LOG_KEY, remaining);
+  const index = isEntryId(id) ? log.findIndex((entry) => isEntryId(entry.id) && String(entry.id) === String(id)) : -1;
+  if (index === -1) return log;
+  const remaining = log.filter((_, i) => i !== index);
+  writeJson(storage, LOG_KEY, remaining);
   return remaining;
 }
 

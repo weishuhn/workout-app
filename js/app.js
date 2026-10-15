@@ -112,11 +112,14 @@ $('shuffle').addEventListener('click', () => {
 
 // Re-reads the log so the list, "This week" and the streak always reflect what is stored.
 function refreshHistory() {
-  renderHistory(loadLog(), new Date(), (entry) => {
-    if (window.confirm(`Delete this workout from ${formatEntryDate(entry)}?`)) {
-      deleteLogEntry(entry.id);
-      refreshHistory();
-    }
+  renderHistory(loadLog(), new Date(), (entry, button) => {
+    if (!window.confirm(`Delete this workout from ${formatEntryDate(entry)}?`)) return;
+    const index = [...document.querySelectorAll('.history-delete')].indexOf(button);
+    deleteLogEntry(entry.id);
+    refreshHistory();
+    // Keep keyboard focus nearby: the next row's button, else the previous one's, else Back.
+    const buttons = document.querySelectorAll('.history-delete');
+    (buttons[index] ?? buttons[index - 1] ?? $('history-back')).focus();
   });
 }
 
