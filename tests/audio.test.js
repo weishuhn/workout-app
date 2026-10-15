@@ -2,12 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAudio, TONES } from '../js/audio.js';
 
-function fakes() {
+function fakes({ initialState = 'suspended', resume = 'resolve' } = {}) {
   const tones = [];
   const spoken = [];
+  const resumes = [];
   class FakeContext {
-    constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = {}; FakeContext.instances++; }
-    resume() { this.state = 'running'; return Promise.resolve(); }
+    constructor() { this.state = initialState; this.currentTime = 0; this.destination = {}; FakeContext.instances++; FakeContext.last = this; }
+    resume() {
+      resumes.push(this.state);
+      if (resume === 'throw') throw new Error('resume failed');
+      if (resume === 'reject') return Promise.reject(new Error('resume rejected'));
+      this.state = 'running';
+      return Promise.resolve();
+    }
     createOscillator() {
       const osc = { type: '', frequency: { value: 0 }, connect() {}, start() { tones.push(osc.frequency.value); }, stop() {} };
       return osc;
@@ -17,13 +24,13 @@ function fakes() {
     }
   }
   FakeContext.instances = 0;
-  const speech = { speak: (u) => spoken.push(u.text), cancel() {} };
+  const speech = { speaking: false, pending: false, cancels: 0, speak: (u) => spoken.push(u.text), cancel() { this.cancels++; } };
   class Utterance { constructor(text) { this.text = text; } }
-  return { tones, spoken, FakeContext, speech, Utterance };
+  return { tones, spoken, resumes, FakeContext, speech, Utterance };
 }
 
-function setup({ muted = false } = {}) {
-  const f = fakes();
+function setup({ muted = false, ...options } = {}) {
+  const f = fakes(options);
   const audio = createAudio({ isMuted: () => muted, AudioContextClass: f.FakeContext, speech: f.speech, Utterance: f.Utterance });
   return { ...f, audio };
 }
@@ -96,4 +103,55 @@ test('missing browser APIs never throw', () => {
     audio.play({ type: 'announceNext', atMs: 0, text: 'x' });
     audio.stopSpeech();
   });
+});
+
+test('unlock resumes a context iOS left interrupted', () => {
+  const { audio, resumes, FakeContext } = setup({ initialState: 'interrupted' });
+  audio.unlock();
+  assert.deepEqual(resumes, ['interrupted']);
+  audio.unlock();
+  assert.deepEqual(resumes, ['interrupted'], 'a running context is not resumed again');
+  assert.equal(FakeContext.instances, 1);
+});
+
+test('play resumes an interrupted context and still plays the tone', () => {
+  const { audio, tones, resumes, FakeContext } = setup();
+  audio.unlock();
+  resumes.length = 0;
+  // An iOS interruption (phone call, Siri) after Start.
+  FakeContext.last.state = 'interrupted';
+  audio.play({ type: 'go', atMs: 0 });
+  assert.deepEqual(resumes, ['interrupted']);
+  assert.equal(FakeContext.last.state, 'running');
+  assert.deepEqual(tones, [TONES.go.frequency]);
+  audio.play({ type: 'countdown', atMs: 0 });
+  assert.deepEqual(resumes, ['interrupted'], 'a running context is not resumed again');
+});
+
+test('a rejected or throwing resume never throws and keeps the context', async () => {
+  for (const resume of ['reject', 'throw']) {
+    const { audio, tones, FakeContext } = setup({ resume });
+    assert.doesNotThrow(() => audio.unlock());
+    assert.doesNotThrow(() => audio.play({ type: 'countdown', atMs: 0 }));
+    assert.equal(FakeContext.instances, 1, resume);
+    assert.deepEqual(tones, [TONES.countdown.frequency], `${resume}: context kept, tone still scheduled`);
+    audio.unlock();
+    assert.equal(FakeContext.instances, 1, `${resume}: no second context`);
+  }
+  // Let any rejection surface; node:test fails the run on an unhandled rejection.
+  await new Promise((resolve) => setImmediate(resolve));
+});
+
+test('speech is only cancelled when something is speaking or queued', () => {
+  const { audio, speech, spoken } = setup();
+  audio.play({ type: 'announceNext', atMs: 0, text: 'Next: Squats' });
+  assert.equal(speech.cancels, 0);
+  speech.speaking = true;
+  audio.play({ type: 'announceNext', atMs: 0, text: 'Next: Lunges' });
+  assert.equal(speech.cancels, 1);
+  speech.speaking = false;
+  speech.pending = true;
+  audio.play({ type: 'announceNext', atMs: 0, text: 'Next: Plank' });
+  assert.equal(speech.cancels, 2);
+  assert.deepEqual(spoken, ['Next: Squats', 'Next: Lunges', 'Next: Plank']);
 });

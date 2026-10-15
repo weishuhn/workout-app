@@ -147,7 +147,9 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     tick();
   }
 
+  // Taps and returning to the page re-arm audio that iOS may have interrupted.
   on($('wo-pause'), 'click', () => {
+    audio.unlock();
     const now = performance.now();
     state = isPaused(state) ? resume(state, now) : pause(state, now);
     if (isPaused(state)) audio.stopSpeech();
@@ -156,6 +158,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   on($('wo-fwd'), 'click', () => jump(skipForward));
   on($('wo-back'), 'click', () => jump(skipBack));
   on($('wo-mute'), 'click', () => {
+    audio.unlock();
     setMuted(!getMuted());
     if (getMuted()) audio.stopSpeech();
     tick();
@@ -186,6 +189,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
 
   on(document, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+      audio.unlock();
       wakeLock.request();
       tick();
     }

@@ -16,14 +16,24 @@ export function createAudio({
 } = {}) {
   let context = null;
 
-  // Must run inside a user gesture: iOS only allows audio and speech started from one.
+  // iOS leaves the context 'suspended' or 'interrupted' (calls, Siri, backgrounding): resume any non-running state.
+  function wake() {
+    if (!context || context.state === 'running') return;
+    try {
+      Promise.resolve(context.resume()).catch(() => {});
+    } catch {
+      // Keep the context; the next unlock or tone retries.
+    }
+  }
+
+  // Call from user gestures: iOS only allows audio and speech started from one. Safe to call repeatedly.
   function unlock() {
     try {
       if (!context && AudioContextClass) context = new AudioContextClass();
-      if (context?.state === 'suspended') context.resume();
     } catch {
       context = null;
     }
+    wake();
     try {
       if (speech && Utterance) speech.speak(new Utterance(''));
     } catch {
@@ -33,6 +43,7 @@ export function createAudio({
 
   function tone({ frequency, durationMs }) {
     if (!context) return;
+    wake();
     try {
       const start = context.currentTime;
       const end = start + durationMs / 1000;
@@ -55,7 +66,8 @@ export function createAudio({
   function say(text) {
     if (!speech || !Utterance) return;
     try {
-      speech.cancel();
+      // Cancel only when something is queued: cancel-then-speak can drop the new utterance on some browsers.
+      if (speech.speaking || speech.pending) speech.cancel();
       const utterance = new Utterance(text);
       utterance.rate = 1.05;
       speech.speak(utterance);
