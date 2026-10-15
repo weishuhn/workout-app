@@ -106,6 +106,7 @@ h1, h2 { margin: 0; }
   background: var(--surface-2);
 }
 .circuit li::before { content: counter(step); min-width: 1.4em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.thumb { flex: none; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #fff; }
 .tag {
   flex: none;
   min-width: 4.6em;
@@ -209,6 +210,17 @@ h1, h2 { margin: 0; }
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
+}
+/* Picture of the upcoming exercise (timed, non-work phases): takes only the height the text leaves free. */
+.wo-photo { flex: 1 1 0; min-height: 0; max-height: 34vh; display: flex; justify-content: center; margin: 8px 0; }
+.wo-photo[hidden] { display: none; }
+.wo-photo img { height: 100%; width: auto; max-width: 100%; object-fit: contain; border-radius: 12px; background: #fff; }
+/* On short screens the picture gets its room by shrinking the countdown and name and dropping the cue. */
+@media (max-height: 760px) {
+  .workout.has-photo .wo-cue { display: none; }
+  .workout.has-photo .wo-name { font-size: clamp(1.6rem, min(11vw, 5.5vh), 6.5rem); }
+  .workout.has-photo .wo-time { font-size: clamp(3.5rem, min(30vw, 15vh), 9rem); }
+  .workout.has-photo .wo-bar { margin: 4px 0 8px; }
 }
 .wo-label { margin: 0; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
 .wo-name { font-size: clamp(2rem, min(14vw, 8vh), 6.5rem); line-height: 1.02; font-weight: 850; letter-spacing: -0.02em; overflow-wrap: anywhere; }

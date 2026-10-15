@@ -6,6 +6,7 @@ import {
 } from './timer.js';
 import { describePosition, formatTarget } from './display.js';
 import { buildLogEntry, appendLog } from './storage.js';
+import { photoFrames, photoFrame } from './photos.js';
 
 const HOLD_TO_END_MS = 1000;
 const FALLBACK_TICK_MS = 250;
@@ -145,6 +146,24 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   let frame = 0;
   let holdTimer = 0;
   let shownPhase = null;
+  let shownPhoto = null;
+  // Load the circuit's pictures up front so each one appears the instant its screen does.
+  if (settings.mode === 'timed') {
+    for (const exercise of circuit) for (const src of photoFrames(exercise.id)) new Image().src = src;
+  }
+
+  // Timed Get ready / Next up / Rest screens show the upcoming exercise; Work and the reps screens stay picture-free.
+  function renderPhoto(pos) {
+    const { phase } = pos;
+    const src = settings.mode === 'timed' && phase.kind !== 'work' ? photoFrame(phase.exercise.id, pos.phaseElapsedSec) : null;
+    $('wo-photo').hidden = src === null;
+    screen.classList.toggle('has-photo', src !== null);
+    if (src === null || src === shownPhoto) return;
+    shownPhoto = src;
+    const img = $('wo-photo-img');
+    img.alt = phase.exercise.name;
+    img.src = src;
+  }
 
   function render(pos) {
     const view = describePosition(timeline, pos, settings);
@@ -157,6 +176,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     setText('wo-time', view.time);
     setText('wo-next', view.next);
     $('wo-bar-fill').style.transform = `scaleX(${view.fraction})`;
+    renderPhoto(pos);
     setText('wo-pause', isPaused(state) ? 'Resume' : 'Pause');
     setText('wo-mute', getMuted() ? 'Sound off' : 'Sound on');
     $('wo-mute').setAttribute('aria-pressed', String(getMuted()));
