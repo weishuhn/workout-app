@@ -52,9 +52,11 @@ h1, h2 { margin: 0; }
   font-weight: 650;
 }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-danger { color: #ff8a73; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: transparent; }
+.btn-block { display: block; width: 100%; }
 .btn-small { min-height: 44px; padding: 0 16px; font-size: 0.95rem; }
 .btn-link { min-height: 44px; padding: 0 8px; background: none; border: none; color: var(--muted); font-weight: 650; }
-.btn:focus-visible, .btn-link:focus-visible, .thumb-btn:focus-visible, .wo-photo:focus-visible, .viewer-close:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
+.btn:focus-visible, .btn-link:focus-visible, .history-delete:focus-visible, .thumb-btn:focus-visible, .wo-photo:focus-visible, .viewer-close:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
   outline: 3px solid var(--prep);
   outline-offset: 2px;
 }
@@ -334,14 +336,26 @@ h1, h2 { margin: 0; }
 .history { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .history-item {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 2px 12px;
-  padding: 12px 14px;
+  align-items: center;
+  padding: 12px 6px 12px 14px;
   border-radius: 10px;
   background: var(--surface);
 }
 .history-date { font-weight: 700; }
 .history-detail { grid-column: 1; color: var(--muted); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.history-delete {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
 .badge {
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -355,6 +369,7 @@ h1, h2 { margin: 0; }
   text-transform: uppercase;
 }
 .empty { padding: 24px; text-align: center; color: var(--muted); }
+#history-clear { margin-top: 16px; }
 
 /* ---- Picture viewer ---- */
 .viewer {
@@ -365,7 +380,7 @@ h1, h2 { margin: 0; }
   flex-direction: column;
   gap: 10px;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  background: rgb(8 9 10 / 0.97);
+  background: rgb(8 9 10);
   color: var(--text);
   cursor: zoom-out;
 }

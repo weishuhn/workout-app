@@ -4,9 +4,9 @@ import { EXERCISES, GROUP_LABELS } from './exercises.js';
 import { SETTING_CHOICES, perRoundOptions, applySetting } from './settings.js';
 import { generateCircuit, buildTimeline, totalDuration } from './generator.js';
 import { formatDuration, formatTarget, ringNotice } from './display.js';
-import { loadSettings, saveSettings, loadLog } from './storage.js';
+import { loadSettings, saveSettings, loadLog, deleteLogEntry, clearLog } from './storage.js';
 import { photoFrames } from './photos.js';
-import { renderHistory, renderDone } from './history.js';
+import { renderHistory, renderDone, formatEntryDate } from './history.js';
 import { createAudio } from './audio.js';
 import { runWorkout } from './workout.js';
 import { openViewer } from './viewer.js';
@@ -110,10 +110,28 @@ $('shuffle').addEventListener('click', () => {
   renderSetup();
 });
 
+// Re-reads the log so the list, "This week" and the streak always reflect what is stored.
+function refreshHistory() {
+  renderHistory(loadLog(), new Date(), (entry) => {
+    if (window.confirm(`Delete this workout from ${formatEntryDate(entry)}?`)) {
+      deleteLogEntry(entry.id);
+      refreshHistory();
+    }
+  });
+}
+
 function openHistory() {
-  renderHistory(loadLog());
+  refreshHistory();
   showScreen('history');
 }
+
+$('history-clear').addEventListener('click', () => {
+  const total = loadLog().length;
+  if (total > 0 && window.confirm(`Delete all ${total === 1 ? '1 workout' : `${total} workouts`}? This can't be undone.`)) {
+    clearLog();
+    refreshHistory();
+  }
+});
 
 function openSetup() {
   renderSetup();
