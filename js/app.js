@@ -135,3 +135,9 @@ $('start').addEventListener('click', () => {
 
 renderSetup();
 showScreen('setup');
+
+// Skipped on localhost so edits show up on reload during development; add ?sw to test offline locally.
+const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
+if ('serviceWorker' in navigator && (!isLocal || new URLSearchParams(location.search).has('sw'))) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
