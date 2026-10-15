@@ -9,6 +9,7 @@ import { photoFrames } from './photos.js';
 import { renderHistory, renderDone } from './history.js';
 import { createAudio } from './audio.js';
 import { runWorkout } from './workout.js';
+import { openViewer } from './viewer.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -47,7 +48,13 @@ function circuitItem(exercise, showTarget) {
     thumb.src = photo;
     thumb.alt = '';
     thumb.loading = 'lazy';
-    item.prepend(thumb);
+    const zoom = document.createElement('button');
+    zoom.className = 'thumb-btn';
+    zoom.type = 'button';
+    zoom.setAttribute('aria-label', `Show larger picture of ${exercise.name}`);
+    zoom.addEventListener('click', () => openViewer(exercise));
+    zoom.append(thumb);
+    item.prepend(zoom);
   }
   if (showTarget) {
     const target = document.createElement('span');

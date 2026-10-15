@@ -7,6 +7,7 @@ import {
 import { describePosition, formatTarget } from './display.js';
 import { buildLogEntry, appendLog } from './storage.js';
 import { photoFrames, photoFrame } from './photos.js';
+import { openViewer, closeViewer } from './viewer.js';
 
 const HOLD_TO_END_MS = 1000;
 const FALLBACK_TICK_MS = 250;
@@ -147,6 +148,8 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   let holdTimer = 0;
   let shownPhase = null;
   let shownPhoto = null;
+  let shownExercise = null;
+  let shownIndex = -1;
   // Load the circuit's pictures up front so each one appears the instant its screen does.
   if (settings.mode === 'timed') {
     for (const exercise of circuit) for (const src of photoFrames(exercise.id)) new Image().src = src;
@@ -158,7 +161,10 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     const src = settings.mode === 'timed' && phase.kind !== 'work' ? photoFrame(phase.exercise.id, pos.phaseElapsedSec) : null;
     $('wo-photo').hidden = src === null;
     screen.classList.toggle('has-photo', src !== null);
-    if (src === null || src === shownPhoto) return;
+    if (src === null) return;
+    shownExercise = phase.exercise;
+    $('wo-photo').setAttribute('aria-label', `Show larger picture of ${phase.exercise.name}`);
+    if (src === shownPhoto) return;
     shownPhoto = src;
     const img = $('wo-photo-img');
     img.alt = phase.exercise.name;
@@ -166,6 +172,11 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   }
 
   function render(pos) {
+    // The viewer never outlives its phase, so it can't cover the work countdown.
+    if (pos.index !== shownIndex) {
+      shownIndex = pos.index;
+      closeViewer();
+    }
     const view = describePosition(timeline, pos, settings);
     screen.dataset.phase = view.kind;
     screen.classList.toggle('paused', isPaused(state));
@@ -211,6 +222,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     clearTimeout(holdTimer);
     endButton.classList.remove('holding');
     controller.abort();
+    closeViewer();
     wakeLock.release();
     const now = performance.now();
     let entry = null;
@@ -240,6 +252,10 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   }
 
   // Taps and returning to the page re-arm audio that iOS may have interrupted.
+  // The timer keeps running under the viewer; it closes itself when the phase changes.
+  on($('wo-photo'), 'click', () => {
+    if (shownExercise) openViewer(shownExercise);
+  });
   on($('wo-pause'), 'click', () => {
     audio.unlock();
     const now = performance.now();
