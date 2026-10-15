@@ -64,18 +64,32 @@ function fitList(list) {
   else listFits(list, 1, one);
 }
 
-function createWakeLock() {
+function createWakeLock(onError) {
   const supported = 'wakeLock' in navigator;
   let sentinel = null;
+  let requesting = false;
   let active = true;
   async function request() {
-    if (!supported || !active || document.visibilityState !== 'visible') return;
+    if (!supported || !active || requesting || (sentinel && !sentinel.released)) return;
+    if (document.visibilityState !== 'visible') return;
+    requesting = true;
     try {
       const lock = await navigator.wakeLock.request('screen');
-      if (active) sentinel = lock;
-      else lock.release().catch(() => {});
+      if (!active) {
+        lock.release().catch(() => {});
+        return;
+      }
+      sentinel = lock;
+      // The browser can drop the lock on its own (hidden tab, battery saver): take it back while still visible.
+      lock.addEventListener('release', () => {
+        if (sentinel === lock) sentinel = null;
+        request();
+      });
     } catch {
       sentinel = null;
+      if (active) onError();
+    } finally {
+      requesting = false;
     }
   }
   function release() {
@@ -123,7 +137,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     tip.hidden = !show;
     refit();
   };
-  const wakeLock = createWakeLock();
+  const wakeLock = createWakeLock(() => showTip(!readFlag(WAKE_TIP_KEY)));
 
   let state = startTimer(timeline, performance.now());
   let prevMs = -1;
@@ -175,20 +189,26 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     cancelAnimationFrame(frame);
     clearInterval(interval);
     clearTimeout(holdTimer);
+    endButton.classList.remove('holding');
     controller.abort();
     wakeLock.release();
     const now = performance.now();
-    const entry = buildLogEntry({
-      startedAt,
-      endedAt: new Date(),
-      activeMs: elapsedMs(state, now),
-      plannedSec,
-      exercisesCompleted: workCompleted(state, now),
-      circuit,
-      settings,
-    });
-    if (entry) appendLog(entry);
-    onExit(entry);
+    let entry = null;
+    // Always leave the Workout screen, even if building or saving the log entry fails.
+    try {
+      entry = buildLogEntry({
+        startedAt,
+        endedAt: new Date(),
+        activeMs: elapsedMs(state, now),
+        plannedSec,
+        exercisesCompleted: workCompleted(state, now),
+        circuit,
+        settings,
+      });
+      if (entry) appendLog(entry);
+    } finally {
+      onExit(entry);
+    }
   }
 
   // After a skip, only the landing phase's start cues should play.
