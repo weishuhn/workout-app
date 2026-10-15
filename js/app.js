@@ -1,0 +1,110 @@
+// Boots the app: Setup screen, navigation between screens.
+
+import { EXERCISES, GROUP_LABELS } from './exercises.js';
+import { SETTING_CHOICES, perRoundOptions, applySetting } from './settings.js';
+import { generateCircuit, buildTimeline, totalDuration } from './generator.js';
+import { formatDuration, formatTarget, ringNotice } from './display.js';
+import { loadSettings, saveSettings, loadLog } from './storage.js';
+import { renderHistory } from './history.js';
+
+const $ = (id) => document.getElementById(id);
+
+const CIRCUIT_KEYS = new Set(['exercisesPerRound', 'bar', 'chair', 'rings', 'cardio']);
+const NUMERIC_KEYS = new Set(['workSec', 'changeoverSec', 'exercisesPerRound', 'rounds', 'roundBreakSec', 'capMin']);
+const RING_LABELS = { off: 'Off', low: 'Low (knee)', waist: 'Waist height' };
+const seconds = (value) => `${value}s`;
+const minutes = (value) => `${value} min`;
+
+export const app = { settings: loadSettings(), circuit: [] };
+app.circuit = generateCircuit(app.settings, EXERCISES);
+
+export function showScreen(name) {
+  for (const section of document.querySelectorAll('.screen')) {
+    section.hidden = section.id !== `screen-${name}`;
+  }
+  window.scrollTo(0, 0);
+}
+
+function fillSelect(select, values, format, selected) {
+  select.replaceChildren(...values.map((value) => new Option(format(value), String(value), false, value === selected)));
+}
+
+function circuitItem(exercise, showTarget) {
+  const item = document.createElement('li');
+  const tag = document.createElement('span');
+  tag.className = `tag tag-${exercise.group}`;
+  tag.textContent = GROUP_LABELS[exercise.group];
+  const name = document.createElement('span');
+  name.textContent = exercise.name;
+  item.append(tag, name);
+  if (showTarget) {
+    const target = document.createElement('span');
+    target.className = 'target';
+    target.textContent = formatTarget(exercise);
+    item.append(target);
+  }
+  return item;
+}
+
+export function renderSetup() {
+  const { settings, circuit } = app;
+  const form = $('settings-form');
+  const fields = form.elements;
+  fields.mode.value = settings.mode;
+  for (const node of form.querySelectorAll('[data-mode]')) node.hidden = node.dataset.mode !== settings.mode;
+  fillSelect(fields.capMin, SETTING_CHOICES.capMin, minutes, settings.capMin);
+  fillSelect(fields.workSec, SETTING_CHOICES.workSec, seconds, settings.workSec);
+  fillSelect(fields.changeoverSec, SETTING_CHOICES.changeoverSec, seconds, settings.changeoverSec);
+  fillSelect(fields.exercisesPerRound, perRoundOptions(settings.cardio), String, settings.exercisesPerRound);
+  fillSelect(fields.rounds, SETTING_CHOICES.rounds, String, settings.rounds);
+  fillSelect(fields.roundBreakSec, SETTING_CHOICES.roundBreakSec, seconds, settings.roundBreakSec);
+  fillSelect(fields.rings, SETTING_CHOICES.rings, (value) => RING_LABELS[value], settings.rings);
+  fields.bar.checked = settings.bar;
+  fields.chair.checked = settings.chair;
+  fields.cardio.checked = settings.cardio;
+
+  $('circuit-list').replaceChildren(...circuit.map((exercise) => circuitItem(exercise, settings.mode === 'reps')));
+  $('total-time').textContent = formatDuration(totalDuration(buildTimeline(circuit, settings)));
+  const notice = ringNotice(settings);
+  $('ring-notice').textContent = notice;
+  $('ring-notice').hidden = notice === '';
+}
+
+function shuffle() {
+  app.circuit = generateCircuit(app.settings, EXERCISES);
+}
+
+$('settings-form').addEventListener('change', (event) => {
+  const field = event.target;
+  const key = field.name;
+  if (!key) return;
+  const value = field.type === 'checkbox' ? field.checked : NUMERIC_KEYS.has(key) ? Number(field.value) : field.value;
+  app.settings = applySetting(app.settings, key, value);
+  saveSettings(app.settings);
+  if (CIRCUIT_KEYS.has(key)) shuffle();
+  renderSetup();
+});
+$('settings-form').addEventListener('submit', (event) => event.preventDefault());
+
+$('shuffle').addEventListener('click', () => {
+  shuffle();
+  renderSetup();
+});
+
+function openHistory() {
+  renderHistory(loadLog());
+  showScreen('history');
+}
+
+function openSetup() {
+  renderSetup();
+  showScreen('setup');
+}
+
+$('open-history').addEventListener('click', openHistory);
+$('history-back').addEventListener('click', openSetup);
+$('done-home').addEventListener('click', openSetup);
+$('done-history').addEventListener('click', openHistory);
+
+renderSetup();
+showScreen('setup');

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111214">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Hands-free bodyweight circuit timer">
+  <title>Workout Timer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <section id="screen-setup" class="screen">
+    <header class="bar">
+      <h1>Workout</h1>
+      <button id="open-history" class="btn-link" type="button">History</button>
+    </header>
+
+    <div class="panel">
+      <h2>Settings</h2>
+      <form id="settings-form" class="settings" autocomplete="off">
+        <div class="mode" role="radiogroup" aria-label="Workout type">
+          <label class="mode-option"><input type="radio" name="mode" value="timed"><span>Timed</span></label>
+          <label class="mode-option"><input type="radio" name="mode" value="reps"><span>Reps</span></label>
+        </div>
+        <div class="field" data-mode="timed"><label for="workSec">Work</label><select id="workSec" name="workSec"></select></div>
+        <div class="field" data-mode="timed"><label for="changeoverSec">Changeover</label><select id="changeoverSec" name="changeoverSec"></select></div>
+        <div class="field" data-mode="reps"><label for="capMin">Time cap</label><select id="capMin" name="capMin"></select></div>
+        <div class="field"><label for="exercisesPerRound">Exercises / round</label><select id="exercisesPerRound" name="exercisesPerRound"></select></div>
+        <div class="field" data-mode="timed"><label for="rounds">Rounds</label><select id="rounds" name="rounds"></select></div>
+        <div class="field" data-mode="timed"><label for="roundBreakSec">Round break</label><select id="roundBreakSec" name="roundBreakSec"></select></div>
+        <div class="field"><label for="rings">Rings</label><select id="rings" name="rings"></select></div>
+        <label class="toggle"><input type="checkbox" name="bar"><span>Pull-up bar</span></label>
+        <label class="toggle"><input type="checkbox" name="chair"><span>Chair / table</span></label>
+        <label class="toggle"><input type="checkbox" name="cardio"><span>Cardio group</span></label>
+      </form>
+    </div>
+
+    <p id="ring-notice" class="notice" hidden></p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Circuit</h2>
+        <button id="shuffle" class="btn btn-small" type="button">Shuffle</button>
+      </div>
+      <ol id="circuit-list" class="circuit"></ol>
+    </div>
+
+    <div class="start-bar">
+      <button id="start" class="btn btn-primary btn-start" type="button">
+        <span>Start</span><span id="total-time" class="total">0:00</span>
+      </button>
+    </div>
+  </section>
+
+  <section id="screen-workout" class="screen workout" data-phase="prepare" data-mode="timed" hidden>
+    <div class="wo-top">
+      <span id="wo-progress"></span>
+      <button id="wo-mute" class="wo-chip" type="button" aria-pressed="false">Sound on</button>
+    </div>
+    <div class="wo-main">
+      <p id="wo-label" class="wo-label"></p>
+      <h2 id="wo-name" class="wo-name"></h2>
+      <p id="wo-cue" class="wo-cue"></p>
+      <div id="wo-time" class="wo-time" aria-live="off"></div>
+      <div class="wo-bar"><span id="wo-bar-fill"></span></div>
+      <ol id="wo-list" class="wo-list"></ol>
+      <p id="wo-next" class="wo-next"></p>
+    </div>
+    <p id="wo-tip" class="wo-tip" hidden>
+      <span>Tip: this browser can't keep the screen on. Turn off auto-lock while you work out.</span>
+      <button id="wo-tip-dismiss" class="wo-chip" type="button">OK</button>
+    </p>
+    <div class="wo-controls">
+      <button id="wo-back" class="wo-btn" type="button" aria-label="Previous">Back</button>
+      <button id="wo-pause" class="wo-btn wo-btn-primary" type="button">Pause</button>
+      <button id="wo-fwd" class="wo-btn" type="button" aria-label="Skip">Skip</button>
+    </div>
+    <button id="wo-end" class="wo-btn hold" type="button"><span>Hold to end</span></button>
+  </section>
+
+  <section id="screen-done" class="screen" hidden>
+    <header class="bar"><h1 id="done-title">Workout complete</h1></header>
+    <div class="stats">
+      <div class="stat"><div id="done-time" class="stat-value">0:00</div><div class="stat-label">Active time</div></div>
+      <div id="done-rounds-stat" class="stat"><div id="done-rounds" class="stat-value">0</div><div class="stat-label">Rounds</div></div>
+      <div class="stat"><div id="done-exercises" class="stat-value">0</div><div class="stat-label">Exercises</div></div>
+    </div>
+    <div class="actions">
+      <button id="done-home" class="btn btn-primary" type="button">Back to start</button>
+      <button id="done-history" class="btn" type="button">History</button>
+    </div>
+  </section>
+
+  <section id="screen-history" class="screen" hidden>
+    <header class="bar">
+      <button id="history-back" class="btn-link" type="button">‹ Back</button>
+      <h1>History</h1>
+    </header>
+    <div class="stats">
+      <div class="stat"><div id="stat-week" class="stat-value">0</div><div class="stat-label">This week</div></div>
+      <div class="stat"><div id="stat-streak" class="stat-value">0</div><div id="stat-streak-label" class="stat-label">Day streak</div></div>
+    </div>
+    <ul id="history-list" class="history"></ul>
+  </section>
+</body>
+</html>
