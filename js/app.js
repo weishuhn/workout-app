@@ -5,7 +5,9 @@ import { SETTING_CHOICES, perRoundOptions, applySetting } from './settings.js';
 import { generateCircuit, buildTimeline, totalDuration } from './generator.js';
 import { formatDuration, formatTarget, ringNotice } from './display.js';
 import { loadSettings, saveSettings, loadLog } from './storage.js';
-import { renderHistory } from './history.js';
+import { renderHistory, renderDone } from './history.js';
+import { createAudio } from './audio.js';
+import { runWorkout } from './workout.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,6 +107,31 @@ $('open-history').addEventListener('click', openHistory);
 $('history-back').addEventListener('click', openSetup);
 $('done-home').addEventListener('click', openSetup);
 $('done-history').addEventListener('click', openHistory);
+
+const audio = createAudio({ isMuted: () => app.settings.muted });
+
+$('start').addEventListener('click', () => {
+  audio.unlock();
+  showScreen('workout');
+  runWorkout({
+    circuit: app.circuit,
+    settings: app.settings,
+    audio,
+    getMuted: () => app.settings.muted,
+    setMuted: (muted) => {
+      app.settings = applySetting(app.settings, 'muted', muted);
+      saveSettings(app.settings);
+    },
+    onExit: (entry) => {
+      if (entry) {
+        renderDone(entry);
+        showScreen('done');
+      } else {
+        openSetup();
+      }
+    },
+  });
+});
 
 renderSetup();
 showScreen('setup');
