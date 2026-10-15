@@ -5,15 +5,23 @@ Status: Approved in conversation; pending written-spec review
 
 ## Purpose
 
-A personal, hands-free interval timer for a fast, intense, whole-body bodyweight
-workout. Exercises flow back-to-back with no rest; muscle groups rotate so each
-group recovers while another works. Used by one person, on a phone or laptop
-propped up a few meters away.
+A personal, hands-free timer for a fast, intense, whole-body bodyweight workout.
+Used by one person, primarily on a phone propped up a few meters away. Two workout
+types:
+
+- **Timed** (default): timed intervals that flow back-to-back with no rest; muscle
+  groups rotate so each group recovers while another works.
+- **Reps**: the screen lists the circuit with a rep/hold target per exercise and a
+  countdown time cap; the user cycles through the list as many rounds as they can
+  (AMRAP) until time runs out.
+
+Neither type requires touching the phone between Start and the end of the workout.
 
 ### Success criteria
 
 - Start a full workout in two taps (open app → Start) using remembered settings.
-- Never need to touch or read the device mid-workout: audio + voice cues carry it.
+- Never need to touch the device between Start and the end of either workout type;
+  audio + voice cues carry it, and both types end and log automatically.
 - No muscle group appears in two consecutive work intervals, including across a
   round boundary.
 - Never requires changing ring height during a workout.
@@ -26,6 +34,9 @@ Accounts, sync, backend, rep counting, custom routine builder, editing individua
 exercises in a generated circuit, data export (may be added later).
 
 ## Platform
+
+**Mobile first.** Base styles target a ~375px-wide portrait phone; larger screens only
+widen containers. Must work from 320px wide with no horizontal scroll.
 
 Plain static site: HTML, CSS, vanilla JavaScript ES modules. No framework, no
 build step, no runtime dependencies. Installable PWA (manifest + service worker).
@@ -59,8 +70,13 @@ from push so burpees never directly precede push-ups.
   ringHeight: 'waist',        // 'low' | 'waist' — present only when equipment === 'rings'
   sided: false,               // true → "Switch sides" cue at the halfway point
   cue: 'Body straight, pull rings to ribs',
+  reps: 12,                   // target for reps mode — exactly one of reps / holdSec
+  // holdSec: 30,             // for static holds (plank, wall sit, support hold...)
 }
 ```
+
+Every exercise has a default target. Displayed as "12 reps", "30s hold", with
+" each side" appended for sided exercises.
 
 `chair` covers both chairs and a sturdy table (one toggle).
 
@@ -91,6 +107,12 @@ be generated with all equipment disabled.
 | `rings` | `'off' \| 'low' \| 'waist'` | `'low'` |
 | `cardio` | boolean | false |
 | `muted` | boolean | false |
+| `mode` | `'timed' \| 'reps'` | `'timed'` |
+| `capMin` | 5–40, step 5 (reps mode time cap, minutes) | 20 |
+
+`workSec`, `changeoverSec`, `rounds` and `roundBreakSec` apply to timed mode only;
+`capMin` applies to reps mode only. Circuit settings (`exercisesPerRound`,
+equipment, `cardio`) apply to both.
 
 When cardio is toggled, `exercisesPerRound` maps by position: 4↔5, 8↔10, 12↔15.
 A stored `exercisesPerRound` that is invalid for the stored `cardio` value falls back
@@ -124,7 +146,7 @@ The Setup screen's **Shuffle** button regenerates with a fresh random seed.
 Pure function returning a flat array of phases:
 
 ```js
-{ kind: 'prepare' | 'work' | 'changeover' | 'roundBreak',
+{ kind: 'prepare' | 'work' | 'changeover' | 'roundBreak' | 'amrap',
   duration,          // seconds, always > 0
   round,             // 1-based
   slot,              // 0-based index into circuit
@@ -133,7 +155,10 @@ Pure function returning a flat array of phases:
 // For non-work phases, round/slot/exercise describe the upcoming work phase.
 ```
 
-Construction:
+Construction (reps mode): exactly two phases — `prepare` (10s) then one `amrap`
+phase of `capMin * 60` seconds (round 1, slot 0, exercise = first in circuit).
+
+Construction (timed mode):
 
 - `prepare` (10s) → first exercise.
 - Between consecutive exercises within a round: `changeover` if `changeoverSec > 0`.
@@ -170,7 +195,9 @@ forward progression.
 |---|---|---|
 | `countdown` | 3s, 2s, 1s before each phase ends (only triggers at or after the phase's start) | short beep |
 | `go` | start of each `work` phase | long higher tone |
-| `announceNext` | start of each `prepare` / `changeover` / `roundBreak` | speech: "Next: {name}" (roundBreak: "Round {n} of {total}. Rest. Next: {name}") |
+| `announceNext` | start of each `prepare` / `changeover` / `roundBreak` | speech: "Next: {name}" (roundBreak: "Round {n} of {total}. Rest. Next: {name}"; prepare before `amrap`: "Get ready. {m} minutes, as many rounds as you can.") |
+| `go` | start of the `amrap` phase | long higher tone |
+| `timeLeft` | in `amrap`: at every 5-minute mark of remaining time below the cap, then 1 minute and 30 seconds left | tone + speech: "15 minutes left" / "1 minute left" / "30 seconds left" |
 | `announceExercise` | start of a `work` phase not preceded by a non-work phase | speech: "{name}" |
 | `switchSides` | halfway through a `work` phase whose exercise is `sided` | speech: "Switch sides" + short beep |
 | `finished` | end of the last phase | speech: "Workout complete" |
@@ -208,6 +235,10 @@ Browser `localStorage`, all access wrapped in try/catch; storage injected for te
   partial: boolean }
 ```
 
+Entries also carry `mode`. In reps mode, `roundsCompleted` and
+`exercisesCompleted` are `null` (not tracked), `partial` = `activeSec < plannedSec`,
+and a workout ended during the prepare phase is not logged. Timed mode:
+
 - `exercisesCompleted` = `workCompleted(...)` at end.
 - `roundsCompleted` = `floor(exercisesCompleted / exercisesPerRound)`.
 - `activeSec` = elapsed at end, capped at `plannedSec`.
@@ -230,8 +261,9 @@ to the home screen mitigates it. Export is a possible later addition.
 
 One page; each screen is a `<section>` toggled via a `hidden` attribute.
 
-1. **Setup** (home): settings controls; circuit preview (ordered list showing
-   group + name) with **Shuffle**; total time; "Set rings to: Low/Waist height"
+1. **Setup** (home): a Timed / Reps mode switch; settings controls relevant to the
+   mode; circuit preview (ordered list showing group + name, plus the target in
+   reps mode) with **Shuffle**; total time; "Set rings to: Low/Waist height"
    notice when rings are enabled; large **Start**; link to History.
 2. **Workout**: full-screen.
    - Huge current exercise name and countdown; one-line form cue; "Next: {name}";
@@ -241,10 +273,14 @@ One page; each screen is a `<section>` toggled via a `hidden` attribute.
      "Get ready" / "Next".
    - Controls: large Pause/Resume, Skip back, Skip forward, Mute toggle,
      **End** (requires press-and-hold ~1s).
+   - Reps mode layout: label ("Get ready" / "As many rounds as you can"), large
+     `m:ss` countdown, progress bar, and the full circuit list with targets in large
+     type (scrolls only if it cannot fit). No current/next exercise.
    - Driven by `requestAnimationFrame` (plus a 250ms `setInterval` fallback when
      rAF is throttled); each tick computes position from the timer and plays
      `cuesBetween(prev, now)`.
-3. **Done**: summary (active time, rounds, exercises); entry already saved; buttons
+3. **Done**: summary (active time, rounds, exercises; reps mode hides rounds and
+   shows the circuit length); entry already saved; buttons
    to Setup and History.
 4. **History**: workouts this week, current streak, list of entries newest first
    (date, duration, exercises, "partial" badge).
@@ -306,6 +342,8 @@ Unit (`node --test`):
   timeline structure for zero changeover / zero round break; `totalDuration`.
 - **timer**: elapsed with pause/resume; position at boundaries; skip forward/back;
   done detection; `workCompleted`.
+- **reps mode**: timeline shape and duration; prepare announcement; `timeLeft`
+  callouts for 20- and 5-minute caps; display text; log entry rules.
 - **cues** (`cuesBetween` in timer.js): countdown/go/announce/switchSides/finished at correct times; each fires
   exactly once across many small ticks; >2s jump yields no cues; countdown never fires
   before a short phase's start.
