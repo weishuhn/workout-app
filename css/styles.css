@@ -221,31 +221,39 @@ h1, h2 { margin: 0; }
 .workout[data-mode="reps"] .wo-name,
 .workout[data-mode="reps"] .wo-cue,
 .workout[data-mode="reps"] .wo-next { display: none; }
-.workout[data-mode="reps"] .wo-main { justify-content: flex-start; padding-top: 8px; }
-.workout[data-mode="reps"] .wo-time { font-size: clamp(4rem, min(20vw, 13vh), 10rem); }
+/* Reps: the countdown is secondary; the list takes all remaining height and js/workout.js fits its font size. */
+.workout[data-mode="reps"] .wo-main { justify-content: flex-start; }
+.workout[data-mode="reps"] .wo-label { font-size: 0.85rem; line-height: 1.2; }
+.workout[data-mode="reps"] .wo-time { font-size: clamp(2.5rem, min(16vw, 9vh), 7rem); }
+.workout[data-mode="reps"] .wo-bar { height: 6px; margin: 2px 0 8px; }
 .workout[data-mode="reps"] .wo-list {
+  flex: 1 1 0;
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(var(--list-columns, 1), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--list-rows, 15), auto);
+  grid-auto-flow: column;
+  align-content: start;
+  gap: 0.15em 0.4em;
   width: 100%;
   max-width: 640px;
   min-height: 0;
   margin: 0;
   padding: 0;
   list-style: none;
-  overflow-y: auto;
+  overflow: hidden auto;
   text-align: left;
+  font-size: var(--list-font, 1.4rem);
 }
 .wo-list li {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 12px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 0 0.5em;
+  padding: 0.1em 0.4em;
+  border-radius: 0.3em;
   background: color-mix(in srgb, var(--phase-fg) 14%, transparent);
-  font-size: clamp(1.05rem, 4.6vw, 1.6rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 .wo-list .target { color: inherit; opacity: 0.85; font-weight: 700; }
 .wo-tip {
@@ -271,12 +279,10 @@ h1, h2 { margin: 0; }
 }
 .wo-btn-primary { background: var(--phase-fg); border-color: var(--phase-fg); color: var(--phase-bg); font-size: 1.3rem; }
 .hold {
+  grid-column: 1 / -1;
   position: relative;
   overflow: hidden;
-  width: 100%;
-  max-width: 640px;
   min-height: var(--tap);
-  margin: 10px auto 0;
   display: block;
   user-select: none;
   -webkit-user-select: none;
@@ -294,6 +300,15 @@ h1, h2 { margin: 0; }
 }
 .hold.holding::before { transform: scaleX(1); transition: transform 1s linear; }
 .hold span { position: relative; }
+/* Reps: every control in one row so the list keeps the height. */
+.workout[data-mode="reps"] .wo-controls { grid-template-columns: 1fr 1.25fr 1fr 1.25fr; }
+.workout[data-mode="reps"] .wo-btn { min-height: var(--tap); font-size: 1rem; }
+.workout[data-mode="reps"] .hold { grid-column: auto; }
+/* Reps AMRAP: no Back/Skip (one tap would end the workout or reset the clock); Pause and Hold to end remain. */
+.workout[data-phase="amrap"] .wo-controls { grid-template-columns: 1fr 1fr; }
+.workout[data-phase="amrap"] #wo-back,
+.workout[data-phase="amrap"] #wo-fwd { display: none; }
+.workout[data-phase="amrap"] .wo-btn-primary { font-size: 1.3rem; }
 
 /* ---- Done & History ---- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 16px; }

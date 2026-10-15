@@ -10,6 +10,12 @@ import { buildLogEntry, appendLog } from './storage.js';
 const HOLD_TO_END_MS = 1000;
 const FALLBACK_TICK_MS = 250;
 const WAKE_TIP_KEY = 'workout.wakeTipDismissed';
+// Reps-list font range (rem). The list is fitted to the largest size that shows every row without scrolling.
+const LIST_FONT_MAX_REM = 2.6;
+const LIST_FONT_MIN_REM = 0.85;
+const LIST_FONT_STEP_REM = 0.02;
+// Two columns (wrapped names, column-major order) are harder to scan, so they must win by this factor.
+const TWO_COLUMN_GAIN = 1.1;
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,6 +33,35 @@ function repsItem(exercise) {
   target.textContent = formatTarget(exercise);
   item.append(name, target);
   return item;
+}
+
+// Lays the reps list out in `columns` column-major columns at `rem` and reports whether every row fits.
+function listFits(list, columns, rem) {
+  list.style.setProperty('--list-columns', String(columns));
+  list.style.setProperty('--list-rows', String(Math.ceil(list.children.length / columns)));
+  list.style.setProperty('--list-font', `${rem}rem`);
+  return list.scrollHeight <= list.clientHeight && list.scrollWidth <= list.clientWidth;
+}
+
+function largestFittingFont(list, columns) {
+  if (listFits(list, columns, LIST_FONT_MAX_REM)) return LIST_FONT_MAX_REM;
+  let low = LIST_FONT_MIN_REM;
+  let high = LIST_FONT_MAX_REM;
+  while (high - low > LIST_FONT_STEP_REM) {
+    const mid = (low + high) / 2;
+    if (listFits(list, columns, mid)) low = mid;
+    else high = mid;
+  }
+  return low;
+}
+
+// One or two columns, whichever allows clearly larger text; below the minimum the list scrolls as a fallback.
+function fitList(list) {
+  if (list.children.length === 0 || list.clientHeight === 0) return;
+  const one = largestFittingFont(list, 1);
+  const two = one < LIST_FONT_MAX_REM ? largestFittingFont(list, 2) : 0;
+  if (two >= one * TWO_COLUMN_GAIN) listFits(list, 2, two);
+  else listFits(list, 1, one);
 }
 
 function createWakeLock() {
@@ -73,10 +108,21 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   const startedAt = new Date();
   const screen = $('screen-workout');
   screen.dataset.mode = settings.mode;
-  $('wo-list').replaceChildren(...(settings.mode === 'reps' ? circuit.map(repsItem) : []));
+  const list = $('wo-list');
+  list.replaceChildren(...(settings.mode === 'reps' ? circuit.map(repsItem) : []));
   const controller = new AbortController();
   const { signal } = controller;
   const on = (target, type, handler) => target.addEventListener(type, handler, { signal });
+  // Refit the reps list whenever its space changes: resize/rotation, the tip, Back/Skip hiding for the AMRAP.
+  const refit = () => {
+    if (settings.mode === 'reps') fitList(list);
+  };
+  on(window, 'resize', refit);
+  const tip = $('wo-tip');
+  const showTip = (show) => {
+    tip.hidden = !show;
+    refit();
+  };
   const wakeLock = createWakeLock();
 
   let state = startTimer(timeline, performance.now());
@@ -84,6 +130,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   let finished = false;
   let frame = 0;
   let holdTimer = 0;
+  let shownPhase = null;
 
   function render(pos) {
     const view = describePosition(timeline, pos, settings);
@@ -99,6 +146,11 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     setText('wo-pause', isPaused(state) ? 'Resume' : 'Pause');
     setText('wo-mute', getMuted() ? 'Sound off' : 'Sound on');
     $('wo-mute').setAttribute('aria-pressed', String(getMuted()));
+    // Back/Skip hide when the AMRAP starts, which frees room for the reps list.
+    if (view.kind !== shownPhase) {
+      shownPhase = view.kind;
+      refit();
+    }
   }
 
   function tick() {
@@ -191,14 +243,14 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     if (document.visibilityState === 'visible') {
       audio.unlock();
       wakeLock.request();
+      refit();
       tick();
     }
   });
 
-  const tip = $('wo-tip');
-  tip.hidden = wakeLock.supported || readFlag(WAKE_TIP_KEY);
+  showTip(!wakeLock.supported && !readFlag(WAKE_TIP_KEY));
   on($('wo-tip-dismiss'), 'click', () => {
-    tip.hidden = true;
+    showTip(false);
     writeFlag(WAKE_TIP_KEY);
   });
 
