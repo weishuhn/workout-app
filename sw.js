@@ -1,6 +1,6 @@
 // Cache-first service worker so the app works offline. Bump CACHE on every release.
 
-const CACHE = 'workout-timer-v1';
+const CACHE = 'workout-timer-v2';
 const ASSETS = [
   './',
   'index.html',
@@ -24,7 +24,10 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()),
+    // cache: 'reload' bypasses the HTTP cache so a new release never precaches stale files.
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
   );
 });
 
