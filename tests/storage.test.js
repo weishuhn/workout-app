@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SETTINGS_KEY, LOG_KEY, loadSettings, saveSettings, loadLog, appendLog, buildLogEntry,
+  SETTINGS_KEY, LOG_KEY, loadSettings, saveSettings, loadLog, appendLog, deleteLogEntry, clearLog, buildLogEntry,
 } from '../js/storage.js';
 import { DEFAULT_SETTINGS } from '../js/settings.js';
 import { memoryStorage, throwingStorage, ex } from './helpers.js';
@@ -55,6 +55,50 @@ test('appendLog persists entries in order and never throws', () => {
   assert.deepEqual(appendLog(second, storage), [first, second]);
   assert.deepEqual(loadLog(storage), [first, second]);
   assert.doesNotThrow(() => appendLog(first, throwingStorage()));
+});
+
+const day = (n) => ({ id: String(n), startedAt: `2026-10-${10 + n}T10:00:00.000Z`, mode: 'timed', partial: false });
+
+test('deleteLogEntry removes exactly the matching entry and persists', () => {
+  const [a, b, c] = [day(1), day(2), day(3)];
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify([a, b, c]) });
+  assert.deepEqual(deleteLogEntry('2', storage), [a, c]);
+  assert.deepEqual(loadLog(storage), [a, c]);
+});
+
+test('deleteLogEntry leaves the log unchanged for an unknown id', () => {
+  const log = [day(1), day(2)];
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify(log) });
+  assert.deepEqual(deleteLogEntry('99', storage), log);
+  assert.deepEqual(loadLog(storage), log);
+});
+
+test('deleteLogEntry does not remove other entries that share fields', () => {
+  const twin = { ...day(1), id: '2' };
+  const log = [day(1), twin];
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify(log) });
+  assert.deepEqual(deleteLogEntry('1', storage), [twin]);
+});
+
+test('deleteLogEntry compares ids as strings', () => {
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify([day(1), day(2)]) });
+  assert.deepEqual(deleteLogEntry(1, storage), [day(2)]);
+});
+
+test('clearLog empties and persists the log without touching settings', () => {
+  const settings = JSON.stringify({ ...DEFAULT_SETTINGS, workSec: 25 });
+  const storage = memoryStorage({ [LOG_KEY]: JSON.stringify([day(1), day(2)]), [SETTINGS_KEY]: settings });
+  assert.deepEqual(clearLog(storage), []);
+  assert.deepEqual(loadLog(storage), []);
+  assert.equal(storage.getItem(SETTINGS_KEY), settings);
+});
+
+test('deleteLogEntry and clearLog never throw', () => {
+  for (const storage of [throwingStorage(), null]) {
+    assert.doesNotThrow(() => deleteLogEntry('1', storage));
+    assert.deepEqual(clearLog(storage), []);
+  }
+  assert.deepEqual(deleteLogEntry('1', throwingStorage()), []);
 });
 
 const circuit = [ex('a', 'push', 'none', { name: 'Push-ups' }), ex('b', 'legs', 'none', { name: 'Squats' })];

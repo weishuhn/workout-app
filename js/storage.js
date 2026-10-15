@@ -57,6 +57,19 @@ export function appendLog(entry, storage = browserStorage()) {
   return log;
 }
 
+// Removes only the entry with this id; an unknown id leaves the log as it was.
+export function deleteLogEntry(id, storage = browserStorage()) {
+  const log = loadLog(storage);
+  const remaining = log.filter((entry) => String(entry.id) !== String(id));
+  if (remaining.length !== log.length) writeJson(storage, LOG_KEY, remaining);
+  return remaining;
+}
+
+export function clearLog(storage = browserStorage()) {
+  writeJson(storage, LOG_KEY, []);
+  return [];
+}
+
 // Reps mode can't know how many exercises were done, so it records time only.
 export function buildLogEntry({ startedAt, endedAt, activeMs, plannedSec, exercisesCompleted, circuit, settings }) {
   const reps = settings.mode === 'reps';
