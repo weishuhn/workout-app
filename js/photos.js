@@ -59,3 +59,9 @@ export function photoFrame(exerciseId, elapsedSec) {
   const sec = Number.isFinite(elapsedSec) ? Math.max(0, Math.floor(elapsedSec)) : 0;
   return frames[sec % frames.length];
 }
+
+// Frames for the enlarged viewer: two-frame sets are shown together and labelled Start / End.
+export function viewerFrames(exerciseId) {
+  const frames = photoFrames(exerciseId);
+  return frames.map((src, i) => ({ src, label: frames.length === 2 ? (i === 0 ? 'Start' : 'End') : null }));
+}

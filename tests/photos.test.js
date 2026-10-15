@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { EXERCISES } from '../js/exercises.js';
-import { PHOTOS, photoFrames, photoFrame } from '../js/photos.js';
+import { PHOTOS, photoFrames, photoFrame, viewerFrames } from '../js/photos.js';
 
 const root = new URL('../', import.meta.url);
 const ids = EXERCISES.map((e) => e.id);
@@ -54,4 +54,17 @@ test('photoFrame is null for an unknown id', () => {
 test('non-finite or negative elapsed time shows the first frame', () => {
   const first = PHOTOS[twoFrameId][0];
   for (const sec of [NaN, Infinity, -Infinity, -1, -2.5, undefined]) assert.equal(photoFrame(twoFrameId, sec), first, String(sec));
+});
+
+test('viewerFrames labels two-frame sets Start and End', () => {
+  const [a, b] = PHOTOS[twoFrameId];
+  assert.deepEqual(viewerFrames(twoFrameId), [{ src: a, label: 'Start' }, { src: b, label: 'End' }]);
+});
+
+test('viewerFrames leaves a single picture unlabelled', () => {
+  assert.deepEqual(viewerFrames(oneFrameId), [{ src: PHOTOS[oneFrameId][0], label: null }]);
+});
+
+test('viewerFrames is empty for an unknown id', () => {
+  assert.deepEqual(viewerFrames('nope'), []);
 });
