@@ -1,10 +1,12 @@
-// Boots the app: Setup screen, navigation between screens.
+// Boots the app: Setup screen (or straight back into a workout that a reload interrupted), navigation between screens.
 
 import { EXERCISES, GROUP_LABELS } from './exercises.js';
 import { SETTING_CHOICES, perRoundOptions, applySetting } from './settings.js';
 import { generateCircuit, buildTimeline, totalDuration } from './generator.js';
 import { formatDuration, formatTarget, ringNotice } from './display.js';
-import { loadSettings, saveSettings, loadLog, deleteLogEntry, clearLog } from './storage.js';
+import {
+  loadSettings, saveSettings, loadLog, deleteLogEntry, clearLog, loadCircuit, saveCircuit, loadSession, clearSession,
+} from './storage.js';
 import { photoFrames } from './photos.js';
 import { renderHistory, renderDone, formatEntryDate } from './history.js';
 import { createAudio } from './audio.js';
@@ -20,7 +22,6 @@ const seconds = (value) => `${value}s`;
 const minutes = (value) => `${value} min`;
 
 export const app = { settings: loadSettings(), circuit: [] };
-app.circuit = generateCircuit(app.settings, EXERCISES);
 
 export function showScreen(name) {
   for (const section of document.querySelectorAll('.screen')) {
@@ -91,6 +92,7 @@ export function renderSetup() {
 
 function shuffle() {
   app.circuit = generateCircuit(app.settings, EXERCISES);
+  saveCircuit(app.circuit);
 }
 
 $('settings-form').addEventListener('change', (event) => {
@@ -148,13 +150,10 @@ $('done-history').addEventListener('click', openHistory);
 
 const audio = createAudio({ isMuted: () => app.settings.muted });
 
-$('start').addEventListener('click', () => {
-  // Mute is per workout: every workout starts with sound on.
-  app.settings = applySetting(app.settings, 'muted', false);
-  saveSettings(app.settings);
-  audio.unlock();
+function startWorkout(resumed = null) {
   showScreen('workout');
   runWorkout({
+    resumed,
     circuit: app.circuit,
     settings: app.settings,
     audio,
@@ -172,10 +171,30 @@ $('start').addEventListener('click', () => {
       }
     },
   });
+}
+
+$('start').addEventListener('click', () => {
+  // Mute is per workout: every workout starts with sound on.
+  app.settings = applySetting(app.settings, 'muted', false);
+  saveSettings(app.settings);
+  audio.unlock();
+  startWorkout();
 });
 
-renderSetup();
-showScreen('setup');
+const session = loadSession(EXERCISES);
+if (session) {
+  app.settings = session.settings;
+  app.circuit = session.circuit;
+  saveCircuit(app.circuit);
+  startWorkout(session);
+} else {
+  clearSession();
+  const saved = loadCircuit(app.settings, EXERCISES);
+  if (saved) app.circuit = saved;
+  else shuffle();
+  renderSetup();
+  showScreen('setup');
+}
 
 // Skipped on localhost so edits show up on reload during development; add ?sw to test offline locally.
 const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);

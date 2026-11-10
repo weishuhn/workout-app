@@ -1,6 +1,6 @@
 // Cache-first service worker so the app works offline. Bump CACHE on every release.
 
-const CACHE = 'workout-timer-v5';
+const CACHE = 'workout-timer-v6';
 const ASSETS = [
   './',
   'index.html',

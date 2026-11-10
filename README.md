@@ -23,6 +23,7 @@ Exercise pictures come from free-exercise-db, wger and other web sources (see `i
 - On iPhone the ring/silent switch can mute the beeps (the voice may still play).
 - Allow the screen to stay on; low-power mode can block it, and a tip appears when the app can't keep it on.
 - Start always begins with sound on, even if you muted the previous workout.
+- A running workout survives a back swipe or reload: it reopens at the right second (saved workouts expire after 3 hours). After a reload, tap once to get sound back.
 
 ## Develop
 

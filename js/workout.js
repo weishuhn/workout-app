@@ -1,11 +1,13 @@
-// Runs one workout on the Workout screen: render loop, cues, controls, wake lock, logging.
+// Runs one workout on the Workout screen: render loop, cues, controls, wake lock, logging, and saving
+// its progress so a reload or an accidental back swipe can't lose it.
 
 import { buildTimeline, totalDuration } from './generator.js';
 import {
-  startTimer, elapsedMs, isPaused, pause, resume, position, skipForward, skipBack, workCompleted, cuesBetween,
+  startTimer, restoreTimer, elapsedMs, isPaused, pause, resume, position, skipForward, skipBack, workCompleted,
+  cuesBetween, totalMs,
 } from './timer.js';
 import { describePosition, formatTarget } from './display.js';
-import { buildLogEntry, appendLog } from './storage.js';
+import { buildLogEntry, appendLog, saveSession, clearSession } from './storage.js';
 import { photoFrames, photoFrame } from './photos.js';
 import { openViewer, closeViewer } from './viewer.js';
 
@@ -26,14 +28,20 @@ function setText(id, text) {
   if (node.textContent !== text) node.textContent = text;
 }
 
-function repsItem(exercise) {
+// Each row is a button: tapping it shows the exercise's picture.
+function repsItem(exercise, index) {
   const item = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.index = String(index);
+  button.setAttribute('aria-label', `${exercise.name}, ${formatTarget(exercise)}. Show picture`);
   const name = document.createElement('span');
   name.textContent = exercise.name;
   const target = document.createElement('span');
   target.className = 'target';
   target.textContent = formatTarget(exercise);
-  item.append(name, target);
+  button.append(name, target);
+  item.append(button);
   return item;
 }
 
@@ -118,17 +126,18 @@ function writeFlag(key) {
   }
 }
 
-export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExit }) {
+// `resumed` ({ startedAt, elapsedMs, paused }) continues a workout saved before a reload instead of starting one.
+export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExit, resumed = null }) {
   const timeline = buildTimeline(circuit, settings);
   const plannedSec = totalDuration(timeline);
-  const startedAt = new Date();
+  const startedAt = resumed?.startedAt ?? new Date();
   const screen = $('screen-workout');
   screen.dataset.mode = settings.mode;
   const list = $('wo-list');
   list.replaceChildren(...(settings.mode === 'reps' ? circuit.map(repsItem) : []));
   const controller = new AbortController();
   const { signal } = controller;
-  const on = (target, type, handler) => target.addEventListener(type, handler, { signal });
+  const on = (target, type, handler, options = {}) => target.addEventListener(type, handler, { ...options, signal });
   // Refit the reps list whenever its space changes: resize/rotation, the tip, Back/Skip hiding for the AMRAP.
   const refit = () => {
     if (settings.mode === 'reps') fitList(list);
@@ -141,7 +150,9 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   };
   const wakeLock = createWakeLock(() => showTip(!readFlag(WAKE_TIP_KEY)));
 
-  let state = startTimer(timeline, performance.now());
+  let state = resumed
+    ? restoreTimer(timeline, resumed.elapsedMs, resumed.paused, performance.now())
+    : startTimer(timeline, performance.now());
   let prevMs = -1;
   let finished = false;
   let frame = 0;
@@ -155,10 +166,23 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     for (const exercise of circuit) for (const src of photoFrames(exercise.id)) new Image().src = src;
   }
 
-  // Timed Get ready / Next up / Rest screens show the upcoming exercise; Work and the reps screens stay picture-free.
+  // Elapsed time is stored against the wall clock, so saving on every change of course is enough.
+  function persist() {
+    if (finished) return;
+    saveSession({
+      circuit,
+      settings: { ...settings, muted: getMuted() },
+      startedAt,
+      elapsedMs: elapsedMs(state, performance.now()),
+      paused: isPaused(state),
+    });
+  }
+
+  // Timed mode shows the current exercise on every screen (the upcoming one on Get ready / Next up / Rest);
+  // the reps screens stay picture-free so the list keeps its room.
   function renderPhoto(pos) {
     const { phase } = pos;
-    const src = settings.mode === 'timed' && phase.kind !== 'work' ? photoFrame(phase.exercise.id, pos.phaseElapsedSec) : null;
+    const src = settings.mode === 'timed' ? photoFrame(phase.exercise.id, pos.phaseElapsedSec) : null;
     $('wo-photo').hidden = src === null;
     screen.classList.toggle('has-photo', src !== null);
     if (src === null) return;
@@ -224,13 +248,16 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     controller.abort();
     closeViewer();
     wakeLock.release();
+    clearSession();
     const now = performance.now();
+    // A resumed workout may have run out while the page was closed: it ended when its time ran out, not now.
+    const overrunMs = Math.max(0, elapsedMs(state, now) - totalMs(timeline));
     let entry = null;
     // Always leave the Workout screen, even if building or saving the log entry fails.
     try {
       entry = buildLogEntry({
         startedAt,
-        endedAt: new Date(),
+        endedAt: new Date(Date.now() - overrunMs),
         activeMs: elapsedMs(state, now),
         plannedSec,
         exercisesCompleted: workCompleted(state, now),
@@ -249,11 +276,16 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     state = skip(state, now);
     prevMs = elapsedMs(state, now) - 1;
     tick();
+    persist();
   }
 
   // The timer keeps running under the viewer; it closes itself when the phase changes.
   on($('wo-photo'), 'click', () => {
     if (shownExercise) openViewer(shownExercise);
+  });
+  on(list, 'click', (event) => {
+    const row = event.target.closest('button[data-index]');
+    if (row) openViewer(circuit[Number(row.dataset.index)]);
   });
 
   // Taps and returning to the page re-arm audio that iOS may have interrupted.
@@ -263,6 +295,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     state = isPaused(state) ? resume(state, now) : pause(state, now);
     if (isPaused(state)) audio.stopSpeech();
     tick();
+    persist();
   });
   on($('wo-fwd'), 'click', () => jump(skipForward));
   on($('wo-back'), 'click', () => jump(skipBack));
@@ -271,6 +304,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
     setMuted(!getMuted());
     if (getMuted()) audio.stopSpeech();
     tick();
+    persist();
   });
 
   const endButton = $('wo-end');
@@ -302,8 +336,28 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
       wakeLock.request();
       refit();
       tick();
+    } else {
+      persist();
     }
   });
+  on(window, 'pagehide', persist);
+
+  // A back swipe would leave the page: give it an in-page history entry to land on instead, and put one back
+  // each time it is used. (Browsers may let a second swipe in a row through; the saved session covers that.)
+  const trapBack = () => history.pushState({ workout: true }, '');
+  if (!history.state?.workout) trapBack();
+  on(window, 'popstate', trapBack);
+
+  // After a reload the browser blocks sound until the page is touched: say so, and use the first tap anywhere.
+  const soundBar = $('wo-sound');
+  soundBar.hidden = !resumed || getMuted();
+  if (!soundBar.hidden) {
+    on(screen, 'click', () => {
+      audio.unlock();
+      soundBar.hidden = true;
+      refit();
+    }, { capture: true, once: true });
+  }
 
   showTip(!wakeLock.supported && !readFlag(WAKE_TIP_KEY));
   on($('wo-tip-dismiss'), 'click', () => {
@@ -312,6 +366,7 @@ export function runWorkout({ circuit, settings, audio, getMuted, setMuted, onExi
   });
 
   wakeLock.request();
+  persist();
   // rAF drives smooth updates; the interval keeps cues going when rAF is throttled.
   const interval = setInterval(tick, FALLBACK_TICK_MS);
   loop();

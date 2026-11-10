@@ -56,7 +56,7 @@ h1, h2 { margin: 0; }
 .btn-block { display: block; width: 100%; }
 .btn-small { min-height: 44px; padding: 0 16px; font-size: 0.95rem; }
 .btn-link { min-height: 44px; padding: 0 8px; background: none; border: none; color: var(--muted); font-weight: 650; }
-.btn:focus-visible, .btn-link:focus-visible, .history-delete:focus-visible, .thumb-btn:focus-visible, .wo-photo:focus-visible, .viewer-close:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
+.btn:focus-visible, .btn-link:focus-visible, .history-delete:focus-visible, .thumb-btn:focus-visible, .wo-photo:focus-visible, .wo-list button:focus-visible, .viewer-close:focus-visible, .wo-btn:focus-visible, .wo-chip:focus-visible, select:focus-visible, .toggle:focus-within {
   outline: 3px solid var(--prep);
   outline-offset: 2px;
 }
@@ -214,9 +214,11 @@ h1, h2 { margin: 0; }
   max-width: 900px;
   margin: 0 auto;
 }
-/* Picture of the upcoming exercise (timed, non-work phases): takes only the height the text leaves free. */
+/* Picture of the exercise (timed mode): takes only the height the text leaves free. */
 .wo-photo { flex: 1 1 0; min-height: 0; max-height: 34vh; display: flex; justify-content: center; margin: 8px 0; padding: 0; border: 0; background: none; cursor: zoom-in; touch-action: manipulation; }
 .wo-photo[hidden] { display: none; }
+/* While working, the countdown stays the main thing: the picture is a smaller reminder. */
+.workout[data-phase="work"] .wo-photo { max-height: 24vh; }
 .wo-photo img { height: 100%; width: auto; max-width: 100%; object-fit: contain; border-radius: 12px; background: #fff; }
 /* On short screens the picture gets its room by shrinking the countdown and name and dropping the cue. */
 @media (max-height: 760px) {
@@ -224,6 +226,7 @@ h1, h2 { margin: 0; }
   .workout.has-photo .wo-name { font-size: clamp(1.6rem, min(11vw, 5.5vh), 6.5rem); }
   .workout.has-photo .wo-time { font-size: clamp(3.5rem, min(30vw, 15vh), 9rem); }
   .workout.has-photo .wo-bar { margin: 4px 0 8px; }
+  .workout.has-photo[data-phase="work"] .wo-time { font-size: clamp(3.5rem, min(32vw, 20vh), 9rem); }
 }
 .wo-label { margin: 0; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
 .wo-name { font-size: clamp(2rem, min(14vw, 8vh), 6.5rem); line-height: 1.02; font-weight: 850; letter-spacing: -0.02em; overflow-wrap: anywhere; }
@@ -270,6 +273,23 @@ h1, h2 { margin: 0; }
   background: color-mix(in srgb, var(--phase-fg) 14%, transparent);
   font-weight: 800;
   line-height: 1.12;
+}
+/* Each row is a button that opens the exercise's picture. */
+.wo-list button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5em;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: zoom-in;
+  touch-action: manipulation;
 }
 .wo-list .target { color: inherit; opacity: 0.85; font-weight: 700; }
 .wo-tip {
