@@ -1,10 +1,15 @@
-// Persists settings and the workout log in localStorage. Never throws.
+// Persists settings, the workout log and in-progress state (setup circuit, running workout) in localStorage.
+// Never throws.
 
 import { normalizeSettings } from './settings.js';
-import { PREPARE_SEC } from './generator.js';
+import { PREPARE_SEC, isEligible } from './generator.js';
 
 export const SETTINGS_KEY = 'workout.settings.v1';
 export const LOG_KEY = 'workout.log.v1';
+export const SESSION_KEY = 'workout.session.v1';
+export const CIRCUIT_KEY = 'workout.circuit.v1';
+// A saved workout older than this is treated as abandoned rather than resumed.
+export const SESSION_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 
 function browserStorage() {
   try {
@@ -20,6 +25,14 @@ function readJson(storage, key) {
     return raw == null ? undefined : JSON.parse(raw);
   } catch {
     return undefined;
+  }
+}
+
+function removeKey(storage, key) {
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // Nothing to do; a stale value is ignored on load anyway.
   }
 }
 
@@ -93,4 +106,62 @@ export function buildLogEntry({ startedAt, endedAt, activeMs, plannedSec, exerci
     settings: { ...settings },
     partial: reps ? activeSec < plannedSec : exercisesCompleted < settings.exercisesPerRound * settings.rounds,
   };
+}
+
+// Exercise ids -> exercises from the library, or null if any id is unknown or the list isn't the expected length.
+function exercisesFor(ids, library, length) {
+  if (!Array.isArray(ids) || ids.length !== length) return null;
+  const byId = new Map(library.map((e) => [e.id, e]));
+  const circuit = ids.map((id) => byId.get(id));
+  return circuit.every(Boolean) ? circuit : null;
+}
+
+// The circuit shown on Setup, so a reload doesn't reshuffle it.
+export function saveCircuit(circuit, storage = browserStorage()) {
+  return writeJson(storage, CIRCUIT_KEY, circuit.map((e) => e.id));
+}
+
+// The saved circuit, or null when there is none or it no longer fits the settings (size, equipment, ring height).
+export function loadCircuit(settings, library, storage = browserStorage()) {
+  const circuit = exercisesFor(readJson(storage, CIRCUIT_KEY), library, settings.exercisesPerRound);
+  return circuit && circuit.every((e) => isEligible(e, settings)) ? circuit : null;
+}
+
+// Snapshot of a running workout. Elapsed time is stored with the wall-clock time it was taken at, so a
+// running workout can be resumed at the right second after a reload.
+export function saveSession({ circuit, settings, startedAt, elapsedMs, paused }, nowMs = Date.now(), storage = browserStorage()) {
+  return writeJson(storage, SESSION_KEY, {
+    circuit: circuit.map((e) => e.id),
+    settings,
+    startedAt: startedAt.getTime(),
+    elapsedMs,
+    paused,
+    savedAt: nowMs,
+  });
+}
+
+const isTime = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+// The workout to resume as { circuit, settings, startedAt, elapsedMs, paused }, or null when there is none,
+// it is malformed, or it was saved more than SESSION_MAX_AGE_MS ago.
+export function loadSession(library, nowMs = Date.now(), storage = browserStorage()) {
+  const raw = readJson(storage, SESSION_KEY);
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const { startedAt, elapsedMs, paused, savedAt } = raw;
+  if (!isTime(startedAt) || !isTime(elapsedMs) || !isTime(savedAt) || typeof paused !== 'boolean') return null;
+  if (nowMs - savedAt > SESSION_MAX_AGE_MS) return null;
+  const settings = normalizeSettings(raw.settings);
+  const circuit = exercisesFor(raw.circuit, library, settings.exercisesPerRound);
+  if (!circuit) return null;
+  return {
+    circuit,
+    settings,
+    startedAt: new Date(startedAt),
+    elapsedMs: paused ? elapsedMs : elapsedMs + Math.max(0, nowMs - savedAt),
+    paused,
+  };
+}
+
+export function clearSession(storage = browserStorage()) {
+  removeKey(storage, SESSION_KEY);
 }

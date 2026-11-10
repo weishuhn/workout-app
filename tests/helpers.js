@@ -24,6 +24,7 @@ export function memoryStorage(initial = {}) {
     data,
     getItem: (key) => (data.has(key) ? data.get(key) : null),
     setItem: (key, value) => data.set(key, String(value)),
+    removeItem: (key) => data.delete(key),
   };
 }
 
@@ -32,5 +33,6 @@ export function throwingStorage() {
   return {
     getItem() { throw new Error('storage denied'); },
     setItem() { throw new Error('quota exceeded'); },
+    removeItem() { throw new Error('storage denied'); },
   };
 }

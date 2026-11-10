@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   startTimer, isPaused, elapsedMs, pause, resume, phaseStartsMs, totalMs,
-  position, skipForward, skipBack, workCompleted,
+  position, skipForward, skipBack, workCompleted, restoreTimer,
 } from '../js/timer.js';
 import { buildTimeline } from '../js/generator.js';
 import { DEFAULT_SETTINGS } from '../js/settings.js';
@@ -107,4 +107,19 @@ test('workCompleted counts only fully elapsed work phases and ignores paused tim
   assert.equal(workCompleted(state, T0 + 999999), 0);
   state = resume(state, T0 + 999999);
   assert.equal(workCompleted(state, T0 + 999999 + 35000), 2);
+});
+
+test('restoreTimer resumes running from a saved elapsed time', () => {
+  const state = restoreTimer(timeline, 32000, false, T0);
+  assert.equal(isPaused(state), false);
+  assert.equal(elapsedMs(state, T0), 32000);
+  assert.equal(elapsedMs(state, T0 + 1000), 33000);
+  assert.equal(position(state, T0).index, 2);
+});
+
+test('restoreTimer can restore a paused timer, which resumes from the same point', () => {
+  const state = restoreTimer(timeline, 32000, true, T0);
+  assert.equal(isPaused(state), true);
+  assert.equal(elapsedMs(state, T0 + 5000), 32000);
+  assert.equal(elapsedMs(resume(state, T0 + 5000), T0 + 6000), 33000);
 });

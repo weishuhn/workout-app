@@ -7,6 +7,11 @@ export function startTimer(timeline, now) {
   return { timeline, elapsedBeforeMs: 0, anchorMs: now };
 }
 
+// Rebuilds a timer from a saved elapsed time (after a reload), running from `now` unless it was paused.
+export function restoreTimer(timeline, elapsed, paused, now) {
+  return { timeline, elapsedBeforeMs: elapsed, anchorMs: paused ? null : now };
+}
+
 export function isPaused(state) {
   return state.anchorMs === null;
 }
